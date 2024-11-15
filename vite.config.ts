@@ -5,8 +5,18 @@ export default defineConfig({
   plugins: [react()],
   base: '/workers/',
   build: {
-    outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'monaco-editor': ['@monaco-editor/react', 'monaco-editor'],
+          'firebase': ['firebase/app', 'firebase/firestore'],
+          'ui-components': ['lucide-react']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
   },
   server: {
     proxy: {

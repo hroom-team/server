@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
+import React, { useState, lazy, Suspense } from 'react';
 import { X } from 'lucide-react';
 import type { Worker } from '../types/worker';
 import { workerTemplates } from '../templates/workerTemplates';
+
+// Lazy load Monaco Editor
+const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
 interface WorkerFormProps {
   worker?: Worker;
@@ -114,16 +116,18 @@ export function WorkerForm({ worker, onSubmit, onClose }: WorkerFormProps) {
                 Код воркера
               </label>
               <div className="h-[400px] border rounded-md overflow-hidden">
-                <Editor
-                  defaultLanguage="javascript"
-                  value={formData.code}
-                  onChange={(value) => setFormData({ ...formData, code: value || '' })}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                  }}
-                />
+                <Suspense fallback={<div className="h-full flex items-center justify-center">Loading editor...</div>}>
+                  <MonacoEditor
+                    defaultLanguage="javascript"
+                    value={formData.code}
+                    onChange={(value) => setFormData({ ...formData, code: value || '' })}
+                    theme="vs-dark"
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 14,
+                    }}
+                  />
+                </Suspense>
               </div>
             </div>
 
