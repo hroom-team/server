@@ -1,8 +1,12 @@
 import { Worker } from 'worker_threads';
 import { db } from '../config/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
+
+console.log('[Worker Runner] Starting worker monitoring system...');
 
 async function runWorker(workerId) {
+  console.log(`[Worker Runner] Attempting to run worker: ${workerId}`);
+  
   try {
     const workerDoc = await getDoc(doc(db, 'workers', workerId));
     if (!workerDoc.exists()) {
@@ -11,6 +15,8 @@ async function runWorker(workerId) {
     }
 
     const workerData = workerDoc.data();
+    console.log(`[Worker Runner] Worker data:`, workerData);
+
     if (workerData.status !== 'running') {
       console.log(`[${new Date().toISOString()}] Worker ${workerId} is not running`);
       return;
@@ -23,7 +29,17 @@ async function runWorker(workerId) {
       `data:text/javascript,${encodeURIComponent(workerData.code)}`,
       { 
         eval: true,
-        env: { INTERVAL: workerData.interval.toString() }
+        env: { 
+          INTERVAL: workerData.interval.toString(),
+          FIREBASE_CONFIG: JSON.stringify({
+            apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
+            authDomain: "hroom-mpv-2f31e.firebaseapp.com",
+            projectId: "hroom-mpv-2f31e",
+            storageBucket: "hroom-mpv-2f31e.firebasestorage.app",
+            messagingSenderId: "356587190634",
+            appId: "1:356587190634:web:f7759be737658700830d13"
+          })
+        }
       }
     );
 
@@ -59,9 +75,14 @@ async function runWorker(workerId) {
 }
 
 // Monitor workers collection for changes
+console.log('[Worker Runner] Setting up Firestore listener...');
+
 const unsubscribe = onSnapshot(collection(db, 'workers'), (snapshot) => {
+  console.log('[Worker Runner] Received Firestore update');
+  
   snapshot.docChanges().forEach((change) => {
     const worker = { id: change.doc.id, ...change.doc.data() };
+    console.log(`[Worker Runner] Worker change: ${change.type}`, worker);
     
     if (change.type === 'added' || change.type === 'modified') {
       if (worker.status === 'running') {
@@ -69,9 +90,12 @@ const unsubscribe = onSnapshot(collection(db, 'workers'), (snapshot) => {
       }
     }
   });
+}, (error) => {
+  console.error('[Worker Runner] Firestore listener error:', error);
 });
 
 process.on('SIGINT', () => {
+  console.log('[Worker Runner] Shutting down...');
   unsubscribe();
   process.exit(0);
 });

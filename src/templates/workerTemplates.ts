@@ -3,11 +3,18 @@ export const workerTemplates = {
     id: 'poll-monitoring',
     name: 'Мониторинг опросов',
     description: 'Мониторит опросы со статусом "planned" и активирует их при наступлении даты начала',
-    code: `import { db } from '../config/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from 'firebase/firestore';
+    code: `
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, query, where, getDocs, updateDoc, doc, Timestamp } = require('firebase/firestore');
+
+// Initialize Firebase in the worker
+const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 async function monitorSurveys() {
   const timestamp = new Date().toISOString();
+  
   // Сообщаем о начале выполнения
   process.parentPort.postMessage({ 
     type: 'start',
