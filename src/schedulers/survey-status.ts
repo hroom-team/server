@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import * as cron from 'node-cron';
 
 let updateInterval = '*/30 * * * * *'; // Default 30 seconds
+let cronJob: cron.ScheduledTask | null = null;
 
 export const setUpdateInterval = (seconds: number) => {
   updateInterval = `*/${seconds} * * * * *`;
@@ -13,32 +14,41 @@ export const setUpdateInterval = (seconds: number) => {
 
 export const updateSurveyStatuses = async () => {
   const now = new Date();
+  const batch = db.batch();
+  let updatedCount = 0;
   
   try {
     // Update planned to active
-    const plannedSurveys = await db.collection('surveys')
+    const plannedSnapshot = await db.collection('surveys')
       .where('status', '==', SurveyStatus.PLANNED)
       .where('startDate', '<=', now)
       .get();
 
-    for (const doc of plannedSurveys.docs) {
-      await doc.ref.update({
+    plannedSnapshot.docs.forEach(doc => {
+      batch.update(doc.ref, {
         status: SurveyStatus.ACTIVE,
         updatedAt: now
       });
-    }
+      updatedCount++;
+    });
 
     // Update active to processing
-    const activeSurveys = await db.collection('surveys')
+    const activeSnapshot = await db.collection('surveys')
       .where('status', '==', SurveyStatus.ACTIVE)
       .where('endDate', '<', now)
       .get();
 
-    for (const doc of activeSurveys.docs) {
-      await doc.ref.update({
+    activeSnapshot.docs.forEach(doc => {
+      batch.update(doc.ref, {
         status: SurveyStatus.PROCESSING,
         updatedAt: now
       });
+      updatedCount++;
+    });
+
+    if (updatedCount > 0) {
+      await batch.commit();
+      logger.info(`Updated ${updatedCount} survey statuses`);
     }
 
     return {
@@ -50,8 +60,6 @@ export const updateSurveyStatuses = async () => {
     throw error;
   }
 };
-
-let cronJob: cron.ScheduledTask | null = null;
 
 export const setupScheduler = () => {
   if (cronJob) {

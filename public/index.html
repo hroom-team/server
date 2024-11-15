@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Survey Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
@@ -95,37 +97,52 @@
     </div>
 
     <script>
-        // Fetch stats every 5 seconds
-        function fetchStats() {
-            fetch('/api/v1/surveys/stats')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('plannedCount').textContent = data.planned;
-                    document.getElementById('activeCount').textContent = data.active;
-                    document.getElementById('lastUpdate').textContent = new Date(data.lastUpdate).toLocaleString();
-                    document.getElementById('nextUpdate').textContent = new Date(data.nextUpdate).toLocaleString();
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
+            authDomain: "hroom-mpv-2f31e.firebaseapp.com",
+            projectId: "hroom-mpv-2f31e",
+            storageBucket: "hroom-mpv-2f31e.appspot.com",
+            messagingSenderId: "356587190634",
+            appId: "1:356587190634:web:f7759be737658700830d13"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Real-time updates for survey stats
+        function setupRealtimeStats() {
+            const now = new Date();
+
+            // Listen for planned surveys
+            db.collection('surveys')
+                .where('status', '==', 'PLANNED')
+                .onSnapshot(snapshot => {
+                    document.getElementById('plannedCount').textContent = snapshot.size;
                 });
+
+            // Listen for active surveys
+            db.collection('surveys')
+                .where('status', '==', 'ACTIVE')
+                .onSnapshot(snapshot => {
+                    document.getElementById('activeCount').textContent = snapshot.size;
+                });
+
+            // Update timestamps
+            document.getElementById('lastUpdate').textContent = now.toLocaleString();
+            document.getElementById('nextUpdate').textContent = 
+                new Date(now.getTime() + 30000).toLocaleString(); // 30 seconds default
         }
 
-        setInterval(fetchStats, 5000);
-        fetchStats();
+        // Initialize real-time updates
+        setupRealtimeStats();
 
         // Update interval
         function updateInterval() {
             const seconds = document.getElementById('updateInterval').value;
-            fetch('/api/v1/surveys/update-interval', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ seconds: parseInt(seconds) })
-            })
-            .then(response => response.json())
-            .then(() => {
-                alert('Update interval changed successfully');
-                fetchStats();
-            })
-            .catch(error => alert('Failed to update interval'));
+            const now = new Date();
+            document.getElementById('nextUpdate').textContent = 
+                new Date(now.getTime() + seconds * 1000).toLocaleString();
         }
 
         // Modal functions
@@ -138,29 +155,25 @@
         }
 
         // Handle form submission
-        document.getElementById('testForm').onsubmit = function(e) {
+        document.getElementById('testForm').onsubmit = async function(e) {
             e.preventDefault();
             
             const response = {
                 surveyId: document.getElementById('surveyId').value,
                 employeeId: document.getElementById('employeeId').value,
                 answers: document.getElementById('answers').value.split(',').map(a => a.trim()),
-                comments: document.getElementById('comments').value
+                comments: document.getElementById('comments').value,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            fetch('/api/v1/surveys/response', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(response)
-            })
-            .then(response => response.json())
-            .then(() => {
+            try {
+                await db.collection('survey_responses').add(response);
                 alert('Response submitted successfully');
                 closeTestModal();
-            })
-            .catch(error => alert('Failed to submit response'));
+            } catch (error) {
+                console.error('Error submitting response:', error);
+                alert('Failed to submit response');
+            }
         };
     </script>
 </body>
