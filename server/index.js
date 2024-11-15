@@ -8,18 +8,26 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Enable CORS
+// Enable CORS with specific origin
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
 
 // Enable JSON parsing
 app.use(express.json());
 
+// Serve static files from the dist directory
+app.use(express.static(path.join(__dirname, '../dist')));
+
 // API routes
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+// Serve index.html for all other routes (SPA support)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // Error handling middleware
@@ -30,12 +38,10 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3103;
 
-// Create HTTP server with explicit port
+// Create HTTP server with explicit host binding
 const server = app.listen(PORT, '0.0.0.0', () => {
   const addr = server.address();
-  console.log(`Backend server running on http://${addr.address}:${addr.port}`);
-  // Write port to stdout for detection
-  process.stdout.write(`PORT=${addr.port}\n`);
+  console.log(`Server running on http://${addr.address}:${addr.port}`);
 });
 
 // Graceful shutdown
