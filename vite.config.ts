@@ -5,12 +5,12 @@ export default defineConfig({
   plugins: [react()],
   base: '/workers/',
   server: {
-    port: 3000,
+    port: 3103,
     strictPort: true, // Force the specified port
     host: true // Listen on all addresses
   },
   preview: {
-    port: 3000,
+    port: 3103,
     strictPort: true
   },
   build: {

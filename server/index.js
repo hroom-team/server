@@ -36,7 +36,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something broke!' });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3103;
 
 // Create HTTP server with explicit port
 const server = app.listen(PORT, '0.0.0.0', () => {
