@@ -1,35 +1,23 @@
 import * as admin from 'firebase-admin';
-import { logger } from '../utils/logger';
+import { getEnvVar } from './env';
+
+export const firebaseConfig = {
+  apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
+  authDomain: "hroom-mpv-2f31e.firebaseapp.com",
+  projectId: "hroom-mpv-2f31e",
+  storageBucket: "hroom-mpv-2f31e.firebasestorage.app",
+  messagingSenderId: "356587190634",
+  appId: "1:356587190634:web:f7759be737658700830d13"
+};
 
 export const initializeFirebase = (): void => {
-  try {
-    if (admin.apps.length === 0) {
-      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-      
-      if (!privateKey) {
-        throw new Error('FIREBASE_PRIVATE_KEY is not set');
-      }
-
-      if (!process.env.FIREBASE_CLIENT_EMAIL) {
-        throw new Error('FIREBASE_CLIENT_EMAIL is not set');
-      }
-
-      if (!process.env.FIREBASE_PROJECT_ID) {
-        throw new Error('FIREBASE_PROJECT_ID is not set');
-      }
-
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey,
-        }),
-      });
-
-      logger.info('Firebase initialized successfully');
-    }
-  } catch (error) {
-    logger.error('Failed to initialize Firebase:', error);
-    throw error;
-  }
+  const privateKey = getEnvVar('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n');
+  
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: firebaseConfig.projectId,
+      clientEmail: getEnvVar('FIREBASE_CLIENT_EMAIL'),
+      privateKey,
+    }),
+  });
 };
