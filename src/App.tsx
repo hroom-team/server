@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from './config/firebase';
@@ -6,7 +7,7 @@ import { WorkerList } from './components/WorkerList';
 import { WorkerForm } from './components/WorkerForm';
 import type { Worker } from './types/worker';
 
-function App() {
+function WorkerManager() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | undefined>();
@@ -105,6 +106,15 @@ function App() {
         )}
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<WorkerManager />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
