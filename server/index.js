@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import workersRouter from './routes/workers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,10 +18,12 @@ app.use(cors({
 // Enable JSON parsing
 app.use(express.json());
 
+// API routes
+app.use('/api/workers', workersRouter);
+
 // Serve static files from the dist directory
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// API routes
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
