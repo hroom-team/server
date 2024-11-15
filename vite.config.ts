@@ -9,18 +9,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'monaco-editor': ['@monaco-editor/react', 'monaco-editor'],
-          'firebase': ['firebase/app', 'firebase/firestore'],
-          'ui-components': ['lucide-react']
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'editor': ['@monaco-editor/react'],
+          'firebase': ['firebase/app', 'firebase/firestore']
         }
       }
-    },
-    chunkSizeWarningLimit: 1000
-  },
-  server: {
-    proxy: {
-      '/api': 'http://localhost:3000'
     }
   }
 });
