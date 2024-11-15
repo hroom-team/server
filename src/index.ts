@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { initializeFirebase } from './config/firebase';
+import './config/firebase'; // Import for side effects only
 import surveyRoutes from './routes/survey.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { metricsMiddleware } from './middleware/metrics.middleware';
@@ -12,9 +12,6 @@ import { register } from './monitoring/metrics';
 
 // Load environment variables
 dotenv.config();
-
-// Initialize Firebase
-initializeFirebase();
 
 const app = express();
 const PORT = process.env.API_PORT || 3000;

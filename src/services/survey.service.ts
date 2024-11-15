@@ -1,20 +1,14 @@
-import * as admin from 'firebase-admin';
+import { db } from '../config/firebase';
 import { Survey, SurveyStatus } from '../types/survey';
 import { firebaseOperationDuration, activeSurveysGauge } from '../monitoring/metrics';
 
 export class SurveyService {
-  private db: admin.firestore.Firestore;
-
-  constructor() {
-    this.db = admin.firestore();
-  }
-
   async createSurvey(survey: Omit<Survey, 'id'>): Promise<string> {
     const timer = firebaseOperationDuration.startTimer({ operation: 'createSurvey' });
     try {
-      const docRef = await this.db.collection('surveys').add({
+      const docRef = await db.collection('surveys').add({
         ...survey,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: new Date(),
       });
       return docRef.id;
     } finally {
@@ -25,7 +19,7 @@ export class SurveyService {
   async getSurvey(id: string): Promise<Survey | null> {
     const timer = firebaseOperationDuration.startTimer({ operation: 'getSurvey' });
     try {
-      const doc = await this.db.collection('surveys').doc(id).get();
+      const doc = await db.collection('surveys').doc(id).get();
       return doc.exists ? { id: doc.id, ...doc.data() } as Survey : null;
     } finally {
       timer();
@@ -35,9 +29,9 @@ export class SurveyService {
   async updateSurveyStatus(id: string, status: SurveyStatus): Promise<void> {
     const timer = firebaseOperationDuration.startTimer({ operation: 'updateSurveyStatus' });
     try {
-      await this.db.collection('surveys').doc(id).update({
+      await db.collection('surveys').doc(id).update({
         status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: new Date(),
       });
     } finally {
       timer();
@@ -47,7 +41,7 @@ export class SurveyService {
   async getActiveSurveys(): Promise<Survey[]> {
     const timer = firebaseOperationDuration.startTimer({ operation: 'getActiveSurveys' });
     try {
-      const snapshot = await this.db.collection('surveys')
+      const snapshot = await db.collection('surveys')
         .where('status', '==', SurveyStatus.ACTIVE)
         .where('endDate', '>', new Date())
         .get();
