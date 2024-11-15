@@ -31,16 +31,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Metrics endpoint
-app.get('/metrics', async (req, res) => {
-  try {
-    res.set('Content-Type', register.contentType);
-    res.end(await register.metrics());
-  } catch (err) {
-    res.status(500).end(err);
-  }
-});
-
 // Routes
 app.use('/api/v1/surveys', surveyRoutes);
 
@@ -52,10 +42,21 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
+// Metrics endpoint
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
+  }
+});
+
 // Error handling
 app.use(errorHandler);
 
 // Start server
 app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
+  console.log(`Server is running on http://localhost:${port}`);
 });
