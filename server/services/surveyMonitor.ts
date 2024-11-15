@@ -7,6 +7,7 @@ export class SurveyMonitor {
   private timeZone: string;
   private monitoringInterval: number;
   private intervalId?: NodeJS.Timeout;
+  private running: boolean = false;
 
   constructor(db: Firestore, timeZone: string = 'Europe/Moscow', interval: number = 300000) {
     this.db = db;
@@ -77,6 +78,7 @@ export class SurveyMonitor {
       this.checkAndUpdateSurveyStatuses();
     }, this.monitoringInterval);
 
+    this.running = true;
     console.log(`[SurveyMonitor] Started monitoring with interval ${this.monitoringInterval}ms`);
   }
 
@@ -84,6 +86,7 @@ export class SurveyMonitor {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;
+      this.running = false;
       console.log('[SurveyMonitor] Stopped monitoring');
     }
   }
@@ -92,5 +95,9 @@ export class SurveyMonitor {
     this.monitoringInterval = newInterval;
     this.start(); // Restart with new interval
     console.log(`[SurveyMonitor] Updated monitoring interval to ${newInterval}ms`);
+  }
+
+  isRunning(): boolean {
+    return this.running;
   }
 }

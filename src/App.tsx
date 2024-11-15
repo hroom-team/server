@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { io } from 'socket.io-client';
 import { MonitoringInterval } from './components/MonitoringInterval';
 import { SurveyStats } from './components/SurveyStats';
 import { ServerTime } from './components/ServerTime';
-import type { Survey } from './types/survey';
+import { ConnectionStatus } from './components/ConnectionStatus';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
@@ -25,14 +25,40 @@ export function App() {
   const [plannedCount, setPlannedCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [serverTime, setServerTime] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
   useEffect(() => {
+    // Check database connection
+    const unsubscribeDb = onSnapshot(
+      query(collection(db, 'surveys')),
+      () => setIsConnected(true),
+      (error) => {
+        console.error('Database connection error:', error);
+        setIsConnected(false);
+      }
+    );
+
+    // Check monitoring service status
+    socket.on('connect', () => {
+      socket.emit('checkMonitoringStatus');
+    });
+
+    socket.on('monitoringStatus', (isActive: boolean) => {
+      setIsMonitoringActive(isActive);
+    });
+
+    socket.on('disconnect', () => {
+      setIsMonitoringActive(false);
+    });
+
+    // Survey counts subscription
     const surveysQuery = query(
       collection(db, 'surveys'),
       where('status', 'in', ['planned', 'active'])
     );
 
-    const unsubscribe = onSnapshot(surveysQuery, (snapshot) => {
+    const unsubscribeSurveys = onSnapshot(surveysQuery, (snapshot) => {
       const planned = snapshot.docs.filter(doc => doc.data().status === 'planned').length;
       const active = snapshot.docs.filter(doc => doc.data().status === 'active').length;
       
@@ -49,7 +75,11 @@ export function App() {
     });
 
     return () => {
-      unsubscribe();
+      unsubscribeDb();
+      unsubscribeSurveys();
+      socket.off('connect');
+      socket.off('monitoringStatus');
+      socket.off('disconnect');
       socket.off('serverTime');
       socket.off('intervalUpdated');
     };
@@ -67,6 +97,11 @@ export function App() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Survey Monitoring Dashboard</h1>
             <p className="text-gray-600">Real-time survey status monitoring and control</p>
           </header>
+
+          <ConnectionStatus 
+            isConnected={isConnected} 
+            isMonitoringActive={isMonitoringActive} 
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <MonitoringInterval 

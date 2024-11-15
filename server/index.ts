@@ -34,9 +34,14 @@ surveyMonitor.start();
 io.on('connection', (socket) => {
   console.log('Client connected');
   
-  // Send current interval to new clients
+  // Send current interval and monitoring status to new clients
   socket.emit('intervalUpdated', defaultInterval);
+  socket.emit('monitoringStatus', surveyMonitor.isRunning());
   
+  socket.on('checkMonitoringStatus', () => {
+    socket.emit('monitoringStatus', surveyMonitor.isRunning());
+  });
+
   socket.on('updateInterval', (interval: number) => {
     if (typeof interval === 'number' && interval >= 1000) {
       surveyMonitor.updateInterval(interval);
