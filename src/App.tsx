@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { io } from 'socket.io-client';
@@ -6,6 +6,7 @@ import { MonitoringInterval } from './components/MonitoringInterval';
 import { SurveyStats } from './components/SurveyStats';
 import { ServerTime } from './components/ServerTime';
 import { ConnectionStatus } from './components/ConnectionStatus';
+import type { Survey } from './types/survey';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
