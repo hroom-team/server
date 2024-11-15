@@ -1,42 +1,60 @@
 import { Worker } from 'worker_threads';
 import { db } from '../config/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 async function runWorker(workerId) {
   try {
     const workerDoc = await getDoc(doc(db, 'workers', workerId));
     if (!workerDoc.exists()) {
-      console.error(`Worker ${workerId} not found`);
+      console.error(`[${new Date().toISOString()}] Worker ${workerId} not found`);
       return;
     }
 
     const workerData = workerDoc.data();
     if (workerData.status !== 'running') {
-      console.log(`Worker ${workerId} is not running`);
+      console.log(`[${new Date().toISOString()}] Worker ${workerId} is not running`);
       return;
     }
+
+    console.log(`[${new Date().toISOString()}] Starting worker: ${workerData.name} (${workerId})`);
 
     // Create a new worker thread with the worker's code
     const worker = new Worker(
       `data:text/javascript,${encodeURIComponent(workerData.code)}`,
-      { eval: true }
+      { 
+        eval: true,
+        env: { INTERVAL: workerData.interval.toString() }
+      }
     );
 
     worker.on('message', (message) => {
-      console.log(`Worker ${workerId} message:`, message);
+      const timestamp = new Date().toISOString();
+      if (message.type === 'start') {
+        console.log(`[${timestamp}] Worker ${workerData.name} started execution`);
+      } else if (message.type === 'complete') {
+        console.log(`[${timestamp}] Worker ${workerData.name} completed successfully`);
+        console.log(`[${timestamp}] Results:`, message.results);
+      } else {
+        console.log(`[${timestamp}] Worker ${workerData.name} message:`, message);
+      }
     });
 
     worker.on('error', (error) => {
-      console.error(`Worker ${workerId} error:`, error);
+      console.error(`[${new Date().toISOString()}] Worker ${workerData.name} error:`, error);
+      updateDoc(doc(db, 'workers', workerId), {
+        status: 'stopped',
+        lastError: error.message,
+        updatedAt: new Date()
+      });
     });
 
     worker.on('exit', (code) => {
       if (code !== 0) {
-        console.error(`Worker ${workerId} stopped with exit code ${code}`);
+        console.error(`[${new Date().toISOString()}] Worker ${workerData.name} stopped with exit code ${code}`);
       }
     });
   } catch (error) {
-    console.error(`Error running worker ${workerId}:`, error);
+    console.error(`[${new Date().toISOString()}] Error running worker ${workerId}:`, error);
   }
 }
 

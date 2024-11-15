@@ -7,6 +7,13 @@ export const workerTemplates = {
 import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from 'firebase/firestore';
 
 async function monitorSurveys() {
+  const timestamp = new Date().toISOString();
+  // Сообщаем о начале выполнения
+  process.parentPort.postMessage({ 
+    type: 'start',
+    timestamp 
+  });
+
   const surveysRef = collection(db, 'survey');
   const now = Timestamp.now();
   
@@ -21,7 +28,7 @@ async function monitorSurveys() {
     const totalSurveys = querySnapshot.size;
     let modifiedCount = 0;
     
-    console.log(\`[\${new Date().toLocaleString()}] Найдено опросов со статусом "planned": \${totalSurveys}\`);
+    console.log(\`[\${timestamp}] Найдено опросов со статусом "planned": \${totalSurveys}\`);
     
     for (const docSnapshot of querySnapshot.docs) {
       const survey = docSnapshot.data();
@@ -29,7 +36,7 @@ async function monitorSurveys() {
       
       // Проверяем, наступила ли дата начала
       if (startDate && startDate.toMillis() <= now.toMillis()) {
-        console.log(\`Активация опроса: \${docSnapshot.id}\`);
+        console.log(\`[\${timestamp}] Активация опроса: \${docSnapshot.id}\`);
         
         // Обновляем статус на "active"
         await updateDoc(doc(db, 'survey', docSnapshot.id), {
@@ -41,10 +48,23 @@ async function monitorSurveys() {
       }
     }
     
-    console.log(\`[\${new Date().toLocaleString()}] Изменено статусов: \${modifiedCount}\`);
+    // Сообщаем об успешном завершении
+    process.parentPort.postMessage({ 
+      type: 'complete',
+      timestamp: new Date().toISOString(),
+      results: {
+        totalSurveys,
+        modifiedCount
+      }
+    });
     
   } catch (error) {
-    console.error('Ошибка при мониторинге опросов:', error);
+    console.error(\`[\${timestamp}] Ошибка при мониторинге опросов:\`, error);
+    process.parentPort.postMessage({ 
+      type: 'error',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
   }
 }
 
