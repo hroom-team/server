@@ -1,123 +1,111 @@
-import React, { useEffect, useState } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, query, where, onSnapshot } from 'firebase/firestore';
-import { io } from 'socket.io-client';
-import { MonitoringInterval } from './components/MonitoringInterval';
-import { SurveyStats } from './components/SurveyStats';
-import { ServerTime } from './components/ServerTime';
-import { ConnectionStatus } from './components/ConnectionStatus';
-import type { Survey } from './types/survey';
+import React, { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from './config/firebase';
+import { WorkerList } from './components/WorkerList';
+import { WorkerForm } from './components/WorkerForm';
+import type { Worker } from './types/worker';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
-  authDomain: "hroom-mpv-2f31e.firebaseapp.com",
-  projectId: "hroom-mpv-2f31e",
-  storageBucket: "hroom-mpv-2f31e.firebasestorage.app",
-  messagingSenderId: "356587190634",
-  appId: "1:356587190634:web:f7759be737658700830d13"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const socket = io('http://localhost:3000');
-
-export function App() {
-  const [monitoringInterval, setMonitoringInterval] = useState(300000);
-  const [plannedCount, setPlannedCount] = useState(0);
-  const [activeCount, setActiveCount] = useState(0);
-  const [serverTime, setServerTime] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
-  const [isMonitoringActive, setIsMonitoringActive] = useState(false);
+function App() {
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingWorker, setEditingWorker] = useState<Worker | undefined>();
 
   useEffect(() => {
-    // Check database connection
-    const unsubscribeDb = onSnapshot(
-      query(collection(db, 'surveys')),
-      () => setIsConnected(true),
-      (error) => {
-        console.error('Database connection error:', error);
-        setIsConnected(false);
-      }
-    );
-
-    // Check monitoring service status
-    socket.on('connect', () => {
-      socket.emit('checkMonitoringStatus');
+    const unsubscribe = onSnapshot(collection(db, 'workers'), (snapshot) => {
+      const workersData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Worker[];
+      setWorkers(workersData);
     });
 
-    socket.on('monitoringStatus', (isActive: boolean) => {
-      setIsMonitoringActive(isActive);
-    });
-
-    socket.on('disconnect', () => {
-      setIsMonitoringActive(false);
-    });
-
-    // Survey counts subscription
-    const surveysQuery = query(
-      collection(db, 'surveys'),
-      where('status', 'in', ['planned', 'active'])
-    );
-
-    const unsubscribeSurveys = onSnapshot(surveysQuery, (snapshot) => {
-      const planned = snapshot.docs.filter(doc => doc.data().status === 'planned').length;
-      const active = snapshot.docs.filter(doc => doc.data().status === 'active').length;
-      
-      setPlannedCount(planned);
-      setActiveCount(active);
-    });
-
-    socket.on('serverTime', (time: string) => {
-      setServerTime(time);
-    });
-
-    socket.on('intervalUpdated', (interval: number) => {
-      setMonitoringInterval(interval);
-    });
-
-    return () => {
-      unsubscribeDb();
-      unsubscribeSurveys();
-      socket.off('connect');
-      socket.off('monitoringStatus');
-      socket.off('disconnect');
-      socket.off('serverTime');
-      socket.off('intervalUpdated');
-    };
+    return () => unsubscribe();
   }, []);
 
-  const handleIntervalChange = (newInterval: number) => {
-    socket.emit('updateInterval', newInterval);
+  const handleSubmit = async (workerData: Partial<Worker>) => {
+    try {
+      if (editingWorker) {
+        await updateDoc(doc(db, 'workers', editingWorker.id), {
+          ...workerData,
+          updatedAt: new Date()
+        });
+      } else {
+        await addDoc(collection(db, 'workers'), {
+          ...workerData,
+          status: 'stopped',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+      setIsFormOpen(false);
+      setEditingWorker(undefined);
+    } catch (error) {
+      console.error('Error saving worker:', error);
+    }
+  };
+
+  const handleDelete = async (workerId: string) => {
+    if (confirm('Вы уверены, что хотите удалить этот воркер?')) {
+      try {
+        await deleteDoc(doc(db, 'workers', workerId));
+      } catch (error) {
+        console.error('Error deleting worker:', error);
+      }
+    }
+  };
+
+  const handleToggleStatus = async (worker: Worker) => {
+    try {
+      await updateDoc(doc(db, 'workers', worker.id), {
+        status: worker.status === 'running' ? 'stopped' : 'running',
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      console.error('Error toggling worker status:', error);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <header className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Survey Monitoring Dashboard</h1>
-            <p className="text-gray-600">Real-time survey status monitoring and control</p>
-          </header>
-
-          <ConnectionStatus 
-            isConnected={isConnected} 
-            isMonitoringActive={isMonitoringActive} 
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <MonitoringInterval 
-              currentInterval={monitoringInterval} 
-              onIntervalChange={handleIntervalChange} 
-            />
-            <SurveyStats 
-              plannedCount={plannedCount} 
-              activeCount={activeCount} 
-            />
-          </div>
-
-          <ServerTime time={serverTime} />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Управление воркерами</h1>
+          <button
+            onClick={() => {
+              setEditingWorker(undefined);
+              setIsFormOpen(true);
+            }}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Создать воркер
+          </button>
         </div>
+
+        <WorkerList
+          workers={workers}
+          onEdit={(worker) => {
+            setEditingWorker(worker);
+            setIsFormOpen(true);
+          }}
+          onDelete={handleDelete}
+          onToggleStatus={handleToggleStatus}
+        />
+
+        {isFormOpen && (
+          <WorkerForm
+            worker={editingWorker}
+            onSubmit={handleSubmit}
+            onClose={() => {
+              setIsFormOpen(false);
+              setEditingWorker(undefined);
+            }}
+          />
+        )}
       </div>
     </div>
   );
 }
+
+export default App;
