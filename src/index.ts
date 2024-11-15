@@ -4,18 +4,20 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
-import './config/firebase';
 import surveyRoutes from './routes/survey.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { metricsMiddleware } from './middleware/metrics.middleware';
 import { logger } from './utils/logger';
 import { register } from './monitoring/metrics';
+import './schedulers/survey-status';
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.API_PORT || 3000;
 
+// Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());

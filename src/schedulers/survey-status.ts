@@ -7,17 +7,21 @@ let updateInterval = '*/30 * * * * *'; // Default 30 seconds
 let cronJob: cron.ScheduledTask | null = null;
 
 export const setUpdateInterval = (seconds: number) => {
+  if (cronJob) {
+    cronJob.stop();
+  }
   updateInterval = `*/${seconds} * * * * *`;
-  setupScheduler(); // Restart scheduler with new interval
+  setupScheduler();
   logger.info(`Survey status update interval set to ${seconds} seconds`);
 };
 
 export const updateSurveyStatuses = async () => {
   const now = new Date();
-  const batch = db.batch();
-  let updatedCount = 0;
   
   try {
+    const batch = db.batch();
+    let updatedCount = 0;
+
     // Update planned to active
     const plannedSnapshot = await db.collection('surveys')
       .where('status', '==', SurveyStatus.PLANNED)
@@ -62,17 +66,20 @@ export const updateSurveyStatuses = async () => {
 };
 
 export const setupScheduler = () => {
-  if (cronJob) {
-    cronJob.stop();
+  try {
+    cronJob = cron.schedule(updateInterval, async () => {
+      try {
+        await updateSurveyStatuses();
+      } catch (error) {
+        logger.error('Scheduler error:', error);
+      }
+    });
+    
+    logger.info('Survey status scheduler initialized');
+  } catch (error) {
+    logger.error('Failed to setup scheduler:', error);
+    throw error;
   }
-  
-  cronJob = cron.schedule(updateInterval, async () => {
-    try {
-      await updateSurveyStatuses();
-    } catch (error) {
-      logger.error('Scheduler error:', error);
-    }
-  });
 };
 
 // Initial setup
