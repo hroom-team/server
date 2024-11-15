@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import React from 'react';
 import { Clock } from 'lucide-react';
 
 interface MonitoringIntervalProps {
@@ -6,7 +6,7 @@ interface MonitoringIntervalProps {
   onIntervalChange: (interval: number) => void;
 }
 
-export const MonitoringInterval: FC<MonitoringIntervalProps> = ({ currentInterval, onIntervalChange }) => {
+export function MonitoringInterval({ currentInterval, onIntervalChange }: MonitoringIntervalProps) {
   const intervals = [
     { label: '5 seconds', value: 5000 },
     { label: '1 minute', value: 60000 },
@@ -36,4 +36,4 @@ export const MonitoringInterval: FC<MonitoringIntervalProps> = ({ currentInterva
       </div>
     </div>
   );
-};
+}
