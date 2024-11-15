@@ -1,7 +1,7 @@
 import { db } from '../config/firebase';
 import { Survey, SurveyStatus, SurveyResponse, SurveyStats } from '../types/survey';
 import { firebaseOperationDuration, activeSurveysGauge } from '../monitoring/metrics';
-import { updateSurveyStatuses, setUpdateInterval, getCurrentInterval } from '../schedulers/survey-status';
+import { updateSurveyStatuses, setUpdateInterval } from '../schedulers/survey-status';
 
 export class SurveyService {
   async createSurvey(survey: Omit<Survey, 'id'>): Promise<string> {
@@ -62,10 +62,6 @@ export class SurveyService {
     } finally {
       timer();
     }
-  }
-
-  async getCurrentInterval(): Promise<number> {
-    return getCurrentInterval();
   }
 
   async updateInterval(seconds: number): Promise<void> {
