@@ -4,7 +4,11 @@ import { Server } from 'socket.io';
 import admin from 'firebase-admin';
 import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
 import { isBefore, isAfter } from 'date-fns';
-import serviceAccount from './firebase-credentials.json';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -15,9 +19,9 @@ const io = new Server(httpServer, {
   }
 });
 
-// Initialize Firebase Admin with service account
+// Initialize Firebase Admin
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+  credential: admin.credential.cert(join(__dirname, 'firebase-credentials.json')),
   projectId: "hroom-mpv-2f31e"
 });
 
@@ -26,20 +30,20 @@ let monitoringInterval = 300000; // Default 5 minutes
 const timeZone = 'Europe/Moscow';
 
 async function checkAndUpdateSurveyStatuses() {
-  const now = utcToZonedTime(new Date(), timeZone);
-  const serverTime = format(now, 'yyyy-MM-dd HH:mm:ss zzz', { timeZone });
-  
-  console.log(`Running status check at ${serverTime}`);
-  io.emit('serverTime', serverTime);
-
   try {
+    const now = utcToZonedTime(new Date(), timeZone);
+    const serverTime = format(now, 'yyyy-MM-dd HH:mm:ss zzz', { timeZone });
+    
+    console.log(`Running status check at ${serverTime}`);
+    io.emit('serverTime', serverTime);
+
     // Check planned surveys
-    const plannedSurveys = await db
+    const plannedSnapshot = await db
       .collection('surveys')
       .where('status', '==', 'planned')
       .get();
 
-    plannedSurveys.forEach(async (doc) => {
+    const plannedUpdates = plannedSnapshot.docs.map(async (doc) => {
       const survey = doc.data();
       const startDate = utcToZonedTime(new Date(survey.startDate), timeZone);
       const endDate = utcToZonedTime(new Date(survey.endDate), timeZone);
@@ -51,12 +55,12 @@ async function checkAndUpdateSurveyStatuses() {
     });
 
     // Check active surveys
-    const activeSurveys = await db
+    const activeSnapshot = await db
       .collection('surveys')
       .where('status', '==', 'active')
       .get();
 
-    activeSurveys.forEach(async (doc) => {
+    const activeUpdates = activeSnapshot.docs.map(async (doc) => {
       const survey = doc.data();
       const endDate = utcToZonedTime(new Date(survey.endDate), timeZone);
 
@@ -65,6 +69,8 @@ async function checkAndUpdateSurveyStatuses() {
         console.log(`Survey ${doc.id} status updated to processing`);
       }
     });
+
+    await Promise.all([...plannedUpdates, ...activeUpdates]);
   } catch (error) {
     console.error('Error updating survey statuses:', error);
   }
@@ -91,6 +97,7 @@ io.on('connection', (socket) => {
       monitoringInterval = interval;
       startMonitoring();
       io.emit('intervalUpdated', interval);
+      console.log(`Monitoring interval updated to ${interval}ms`);
     }
   });
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react';
 import { AlertCircle } from 'lucide-react';
 
 interface SurveyStatsProps {
@@ -6,7 +6,7 @@ interface SurveyStatsProps {
   activeCount: number;
 }
 
-export function SurveyStats({ plannedCount, activeCount }: SurveyStatsProps) {
+export const SurveyStats: FC<SurveyStatsProps> = ({ plannedCount, activeCount }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex items-center gap-3 mb-4">
@@ -25,4 +25,4 @@ export function SurveyStats({ plannedCount, activeCount }: SurveyStatsProps) {
       </div>
     </div>
   );
-}
+};

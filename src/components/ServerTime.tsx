@@ -1,11 +1,11 @@
-import React from 'react';
+import type { FC } from 'react';
 import { Clock } from 'lucide-react';
 
 interface ServerTimeProps {
   time: string;
 }
 
-export function ServerTime({ time }: ServerTimeProps) {
+export const ServerTime: FC<ServerTimeProps> = ({ time }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex items-center gap-3 mb-4">
@@ -15,4 +15,4 @@ export function ServerTime({ time }: ServerTimeProps) {
       <p className="text-lg text-gray-700">{time || 'Connecting...'}</p>
     </div>
   );
-}
+};

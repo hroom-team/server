@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { io } from 'socket.io-client';
