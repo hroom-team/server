@@ -10,6 +10,7 @@ import { metricsMiddleware } from './middleware/metrics.middleware';
 import { logger } from './utils/logger';
 import { register } from './monitoring/metrics';
 
+// Load environment variables first
 dotenv.config();
 
 const app = express();
@@ -31,6 +32,14 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Health check endpoint (before other routes)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {
   try {
@@ -41,21 +50,22 @@ app.get('/metrics', async (req, res) => {
   }
 });
 
-// Routes
+// API Routes
 app.use('/api/v1/surveys', surveyRoutes);
-
-// Health check endpoint
-app.get('/api/v1/health', (req, res) => {
-  res.json({ 
-    status: 'ok',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // Error handling
 app.use(errorHandler);
 
 // Start server
-app.listen(port, () => {
+const server = app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
 });
