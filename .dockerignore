@@ -1,0 +1,30 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies
+node_modules
+npm-debug.log
+
+# Environment
+.env
+.env.*
+
+# Build output
+dist
+
+# Development files
+*.test.ts
+*.spec.ts
+coverage
+.vscode
+.idea
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+README.md
+CHANGELOG.md
