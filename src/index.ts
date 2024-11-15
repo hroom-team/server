@@ -10,10 +10,7 @@ import { metricsMiddleware } from './middleware/metrics.middleware';
 import { logger } from './utils/logger';
 import { register } from './monitoring/metrics';
 
-// Load environment variables first
 dotenv.config();
-
-// Initialize Firebase before creating any services
 initializeFirebase();
 
 const app = express();
@@ -27,20 +24,20 @@ app.use(metricsMiddleware);
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
 app.use(limiter);
 
 // Health check endpoint
-app.get('/api/v1/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok',
     timestamp: new Date().toISOString()
   });
 });
 
-// Initialize routes after Firebase is initialized
+// Routes
 createRoutes(app);
 
 // Metrics endpoint
@@ -57,16 +54,7 @@ app.get('/metrics', async (req, res) => {
 app.use(errorHandler);
 
 // Start server
-const server = app.listen(port, () => {
+app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
   console.log(`Server is running on port ${port}`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM signal received. Closing HTTP server...');
-  server.close(() => {
-    logger.info('HTTP server closed');
-    process.exit(0);
-  });
 });
