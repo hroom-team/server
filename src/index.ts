@@ -14,7 +14,7 @@ import { register } from './monitoring/metrics';
 dotenv.config();
 
 const app = express();
-const port = process.env.API_PORT || 3000;
+const PORT = 3000; // Fixed port number
 
 // Initialize Firebase
 initializeFirebase();
@@ -57,15 +57,7 @@ app.use('/api/v1/surveys', surveyRoutes);
 app.use(errorHandler);
 
 // Start server
-const server = app.listen(port, () => {
-  logger.info(`Server running on port ${port}`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    logger.info('HTTP server closed');
-    process.exit(0);
-  });
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });
