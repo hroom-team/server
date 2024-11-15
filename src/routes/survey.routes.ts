@@ -10,6 +10,7 @@ router.use(authMiddleware);
 
 router.post('/', validateSurvey, surveyController.createSurvey);
 router.get('/stats', surveyController.getSurveyStats);
+router.get('/current-interval', surveyController.getCurrentInterval);
 router.post('/response', validateResponse, surveyController.submitResponse);
 router.post('/update-interval', surveyController.updateInterval);
 

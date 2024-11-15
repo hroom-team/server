@@ -32,6 +32,15 @@ export class SurveyController {
     }
   };
 
+  getCurrentInterval = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const interval = await this.surveyService.getCurrentInterval();
+      res.json({ seconds: interval });
+    } catch (error) {
+      throw new AppError(500, 'Failed to get current interval');
+    }
+  };
+
   submitResponse = async (req: Request, res: Response): Promise<void> => {
     try {
       const response: SurveyResponse = req.body;

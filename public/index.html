@@ -17,7 +17,7 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <input type="number" id="updateInterval" placeholder="Update interval (seconds)" 
-                           class="border rounded px-3 py-2 w-48" min="1">
+                           class="border rounded px-3 py-2 w-48" min="1" value="30">
                     <button onclick="updateInterval()" 
                             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                         Update Interval
@@ -95,6 +95,13 @@
     </div>
 
     <script>
+        // Get current update interval on page load
+        fetch('/api/v1/surveys/current-interval')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('updateInterval').value = data.seconds;
+            });
+
         // Fetch stats every 5 seconds
         function fetchStats() {
             fetch('/api/v1/surveys/stats')

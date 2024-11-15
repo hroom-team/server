@@ -3,10 +3,15 @@ import { SurveyStatus } from '../types/survey';
 import { logger } from '../utils/logger';
 import * as cron from 'node-cron';
 
-let updateInterval = '*/30 * * * * *'; // Default 30 seconds
+let updateInterval = 30; // Default 30 seconds
+let cronJob: cron.ScheduledTask | null = null;
+
+export const getCurrentInterval = (): number => {
+  return updateInterval;
+};
 
 export const setUpdateInterval = (seconds: number) => {
-  updateInterval = `*/${seconds} * * * * *`;
+  updateInterval = seconds;
   setupScheduler(); // Restart scheduler with new interval
   logger.info(`Survey status update interval set to ${seconds} seconds`);
 };
@@ -43,7 +48,7 @@ export const updateSurveyStatuses = async () => {
 
     return {
       lastUpdate: now.toISOString(),
-      nextUpdate: new Date(now.getTime() + parseInt(updateInterval) * 1000).toISOString()
+      nextUpdate: new Date(now.getTime() + updateInterval * 1000).toISOString()
     };
   } catch (error) {
     logger.error('Error updating survey statuses:', error);
@@ -51,14 +56,12 @@ export const updateSurveyStatuses = async () => {
   }
 };
 
-let cronJob: cron.ScheduledTask | null = null;
-
 export const setupScheduler = () => {
   if (cronJob) {
     cronJob.stop();
   }
   
-  cronJob = cron.schedule(updateInterval, async () => {
+  cronJob = cron.schedule(`*/${updateInterval} * * * * *`, async () => {
     try {
       await updateSurveyStatuses();
     } catch (error) {
