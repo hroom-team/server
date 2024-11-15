@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { SurveyService } from '../services/survey.service';
 import { AppError } from '../middleware/error.middleware';
 import { logger } from '../utils/logger';
-import { Survey, SurveyStatus } from '../types/survey';
+import { Survey, SurveyStatus, SurveyResponse } from '../types/survey';
 
 export class SurveyController {
   private surveyService: SurveyService;
@@ -23,32 +23,32 @@ export class SurveyController {
     }
   };
 
-  getSurvey = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const survey = await this.surveyService.getSurvey(id);
-    
-    if (!survey) {
-      throw new AppError(404, 'Survey not found');
+  getSurveyStats = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const stats = await this.surveyService.getSurveyStats();
+      res.json(stats);
+    } catch (error) {
+      throw new AppError(500, 'Failed to get survey stats');
     }
-    
-    res.json(survey);
   };
 
-  updateSurveyStatus = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const { status } = req.body;
-    
-    if (!Object.values(SurveyStatus).includes(status)) {
-      throw new AppError(400, 'Invalid status');
+  submitResponse = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const response: SurveyResponse = req.body;
+      await this.surveyService.submitResponse(response);
+      res.status(201).json({ message: 'Response submitted successfully' });
+    } catch (error) {
+      throw new AppError(400, 'Failed to submit response');
     }
-
-    await this.surveyService.updateSurveyStatus(id, status);
-    logger.info(`Survey ${id} status updated to ${status}`);
-    res.status(200).json({ message: 'Status updated successfully' });
   };
 
-  getActiveSurveys = async (req: Request, res: Response): Promise<void> => {
-    const surveys = await this.surveyService.getActiveSurveys();
-    res.json(surveys);
+  updateInterval = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { seconds } = req.body;
+      await this.surveyService.updateInterval(Number(seconds));
+      res.json({ message: 'Update interval changed successfully' });
+    } catch (error) {
+      throw new AppError(400, 'Failed to update interval');
+    }
   };
 }

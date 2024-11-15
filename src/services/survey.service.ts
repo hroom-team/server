@@ -1,6 +1,7 @@
 import { db } from '../config/firebase';
-import { Survey, SurveyStatus } from '../types/survey';
+import { Survey, SurveyStatus, SurveyResponse, SurveyStats } from '../types/survey';
 import { firebaseOperationDuration, activeSurveysGauge } from '../monitoring/metrics';
+import { updateSurveyStatuses, setUpdateInterval } from '../schedulers/survey-status';
 
 export class SurveyService {
   async createSurvey(survey: Omit<Survey, 'id'>): Promise<string> {
@@ -26,35 +27,44 @@ export class SurveyService {
     }
   }
 
-  async updateSurveyStatus(id: string, status: SurveyStatus): Promise<void> {
-    const timer = firebaseOperationDuration.startTimer({ operation: 'updateSurveyStatus' });
+  async submitResponse(response: SurveyResponse): Promise<void> {
+    const timer = firebaseOperationDuration.startTimer({ operation: 'submitResponse' });
     try {
-      await db.collection('surveys').doc(id).update({
-        status,
-        updatedAt: new Date(),
+      await db.collection('survey_responses').add({
+        ...response,
+        createdAt: new Date()
       });
     } finally {
       timer();
     }
   }
 
-  async getActiveSurveys(): Promise<Survey[]> {
-    const timer = firebaseOperationDuration.startTimer({ operation: 'getActiveSurveys' });
+  async getSurveyStats(): Promise<SurveyStats> {
+    const timer = firebaseOperationDuration.startTimer({ operation: 'getSurveyStats' });
     try {
-      const snapshot = await db.collection('surveys')
-        .where('status', '==', SurveyStatus.ACTIVE)
-        .where('endDate', '>', new Date())
-        .get();
+      const [plannedSnapshot, activeSnapshot] = await Promise.all([
+        db.collection('surveys')
+          .where('status', '==', SurveyStatus.PLANNED)
+          .get(),
+        db.collection('surveys')
+          .where('status', '==', SurveyStatus.ACTIVE)
+          .get()
+      ]);
 
-      const surveys = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Survey));
+      const { lastUpdate, nextUpdate } = await updateSurveyStatuses();
 
-      activeSurveysGauge.set(surveys.length);
-      return surveys;
+      return {
+        planned: plannedSnapshot.size,
+        active: activeSnapshot.size,
+        lastUpdate,
+        nextUpdate
+      };
     } finally {
       timer();
     }
+  }
+
+  async updateInterval(seconds: number): Promise<void> {
+    setUpdateInterval(seconds);
   }
 }

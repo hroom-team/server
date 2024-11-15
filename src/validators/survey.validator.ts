@@ -11,12 +11,21 @@ export const validateSurvey = [
   body('startDate').isISO8601(),
   body('endDate').isISO8601(),
   body('targetEmployees').isArray(),
-
-  (req: Request, res: Response, next: NextFunction) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    next();
-  }
+  validateResults
 ];
+
+export const validateResponse = [
+  body('surveyId').notEmpty().trim(),
+  body('employeeId').notEmpty().trim(),
+  body('answers').isArray(),
+  body('comments').optional().trim(),
+  validateResults
+];
+
+function validateResults(req: Request, res: Response, next: NextFunction) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+}

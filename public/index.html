@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-gray-600">Last Update: <span id="lastUpdate" class="font-semibold">-</span></p>
+                    <p class="text-gray-600">Next Update: <span id="nextUpdate" class="font-semibold">-</span></p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <input type="number" id="updateInterval" placeholder="Update interval (seconds)" 
+                           class="border rounded px-3 py-2 w-48" min="1">
+                    <button onclick="updateInterval()" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Update Interval
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold">Planned Surveys</h3>
+                        <p class="text-3xl font-bold text-blue-600" id="plannedCount">-</p>
+                    </div>
+                    <button onclick="openTestModal('PLANNED')" 
+                            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Test Survey
+                    </button>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold">Active Surveys</h3>
+                        <p class="text-3xl font-bold text-green-600" id="activeCount">-</p>
+                    </div>
+                    <button onclick="openTestModal('ACTIVE')" 
+                            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Test Survey
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Modal -->
+        <div id="testModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 w-96">
+                <h2 class="text-xl font-semibold mb-4">Test Survey Response</h2>
+                <form id="testForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Survey ID</label>
+                        <input type="text" id="surveyId" required 
+                               class="mt-1 block w-full border rounded-md shadow-sm px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Employee ID</label>
+                        <input type="text" id="employeeId" required 
+                               class="mt-1 block w-full border rounded-md shadow-sm px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Answers (comma-separated)</label>
+                        <input type="text" id="answers" required 
+                               class="mt-1 block w-full border rounded-md shadow-sm px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Comments</label>
+                        <textarea id="comments" 
+                                  class="mt-1 block w-full border rounded-md shadow-sm px-3 py-2"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" onclick="closeTestModal()" 
+                                class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                            Submit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch stats every 5 seconds
+        function fetchStats() {
+            fetch('/api/v1/surveys/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('plannedCount').textContent = data.planned;
+                    document.getElementById('activeCount').textContent = data.active;
+                    document.getElementById('lastUpdate').textContent = new Date(data.lastUpdate).toLocaleString();
+                    document.getElementById('nextUpdate').textContent = new Date(data.nextUpdate).toLocaleString();
+                });
+        }
+
+        setInterval(fetchStats, 5000);
+        fetchStats();
+
+        // Update interval
+        function updateInterval() {
+            const seconds = document.getElementById('updateInterval').value;
+            fetch('/api/v1/surveys/update-interval', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ seconds: parseInt(seconds) })
+            })
+            .then(response => response.json())
+            .then(() => {
+                alert('Update interval changed successfully');
+                fetchStats();
+            })
+            .catch(error => alert('Failed to update interval'));
+        }
+
+        // Modal functions
+        function openTestModal(status) {
+            document.getElementById('testModal').classList.remove('hidden');
+        }
+
+        function closeTestModal() {
+            document.getElementById('testModal').classList.add('hidden');
+        }
+
+        // Handle form submission
+        document.getElementById('testForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const response = {
+                surveyId: document.getElementById('surveyId').value,
+                employeeId: document.getElementById('employeeId').value,
+                answers: document.getElementById('answers').value.split(',').map(a => a.trim()),
+                comments: document.getElementById('comments').value
+            };
+
+            fetch('/api/v1/surveys/response', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(response)
+            })
+            .then(response => response.json())
+            .then(() => {
+                alert('Response submitted successfully');
+                closeTestModal();
+            })
+            .catch(error => alert('Failed to submit response'));
+        };
+    </script>
+</body>
+</html>
