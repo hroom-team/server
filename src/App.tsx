@@ -5,7 +5,6 @@ import { io } from 'socket.io-client';
 import { MonitoringInterval } from './components/MonitoringInterval';
 import { SurveyStats } from './components/SurveyStats';
 import { ServerTime } from './components/ServerTime';
-import type { Survey } from './types/survey';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
@@ -20,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const socket = io('http://localhost:3000');
 
-export function App() {
+function App() {
   const [monitoringInterval, setMonitoringInterval] = useState(300000);
   const [plannedCount, setPlannedCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
@@ -85,3 +84,5 @@ export function App() {
     </div>
   );
 }
+
+export default App;

@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import admin from 'firebase-admin';
 import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
 import { isBefore, isAfter } from 'date-fns';
+import serviceAccount from './firebase-credentials.json';
 
 const app = express();
 const httpServer = createServer(app);
@@ -14,12 +15,13 @@ const io = new Server(httpServer, {
   }
 });
 
-app.use(express.json());
+// Initialize Firebase Admin with service account
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+  projectId: "hroom-mpv-2f31e"
+});
 
-// Initialize Firebase Admin
-admin.initializeApp();
 const db = admin.firestore();
-
 let monitoringInterval = 300000; // Default 5 minutes
 const timeZone = 'Europe/Moscow';
 
@@ -82,6 +84,7 @@ function startMonitoring() {
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected');
+  socket.emit('intervalUpdated', monitoringInterval);
   
   socket.on('updateInterval', (interval: number) => {
     if (typeof interval === 'number' && interval >= 1000) {
