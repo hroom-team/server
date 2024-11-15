@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin';
-import { getEnvVar } from './env';
+import { logger } from '../utils/logger';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyBrshtX9K8EYYyewiPVcT7TZ05K-whJxNY",
@@ -11,13 +11,28 @@ export const firebaseConfig = {
 };
 
 export const initializeFirebase = (): void => {
-  const privateKey = getEnvVar('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n');
-  
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: firebaseConfig.projectId,
-      clientEmail: getEnvVar('FIREBASE_CLIENT_EMAIL'),
-      privateKey,
-    }),
-  });
+  try {
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    
+    if (!privateKey) {
+      throw new Error('FIREBASE_PRIVATE_KEY is not set');
+    }
+
+    if (!process.env.FIREBASE_CLIENT_EMAIL) {
+      throw new Error('FIREBASE_CLIENT_EMAIL is not set');
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: firebaseConfig.projectId,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey,
+      }),
+    });
+
+    logger.info('Firebase initialized successfully');
+  } catch (error) {
+    logger.error('Failed to initialize Firebase:', error);
+    throw error;
+  }
 };

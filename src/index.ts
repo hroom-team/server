@@ -4,19 +4,20 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { initializeFirebase } from './config/firebase';
-import surveyRoutes from './routes/survey.routes';
+import { createRoutes } from './routes';
 import { errorHandler } from './middleware/error.middleware';
 import { metricsMiddleware } from './middleware/metrics.middleware';
 import { logger } from './utils/logger';
 import { register } from './monitoring/metrics';
 
+// Load environment variables first
 dotenv.config();
+
+// Initialize Firebase before creating any services
+initializeFirebase();
 
 const app = express();
 const port = process.env.API_PORT || 3000;
-
-// Initialize Firebase
-initializeFirebase();
 
 // Middleware
 app.use(helmet());
@@ -31,9 +32,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Routes
-app.use('/api/v1/surveys', surveyRoutes);
-
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {
   res.json({ 
@@ -41,6 +39,9 @@ app.get('/api/v1/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Initialize routes after Firebase is initialized
+createRoutes(app);
 
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {
@@ -56,7 +57,16 @@ app.get('/metrics', async (req, res) => {
 app.use(errorHandler);
 
 // Start server
-app.listen(port, () => {
+const server = app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on port ${port}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received. Closing HTTP server...');
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
 });
