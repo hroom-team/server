@@ -1,9 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { initializeApp } from 'firebase-admin/app';
+import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { Worker } from 'worker_threads';
 import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config();
 
@@ -11,11 +12,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize Firebase Admin
-initializeApp();
-const db = getFirestore();
+// Initialize Firebase Admin with credentials
+initializeApp({
+  credential: cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+  }),
+  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
+});
 
+const db = getFirestore();
 const activeWorkers = new Map();
+
+// Serve static files from the dist directory
+app.use(express.static(path.join(process.cwd(), 'dist')));
 
 async function startWorker(workerId) {
   try {
@@ -28,16 +39,24 @@ async function startWorker(workerId) {
     const workerData = workerDoc.data();
     if (workerData.status !== 'running') return;
 
-    // Stop existing worker if any
     if (activeWorkers.has(workerId)) {
       activeWorkers.get(workerId).terminate();
       activeWorkers.delete(workerId);
     }
 
-    // Create worker with the provided code
     const worker = new Worker(`
       const { parentPort } = require('worker_threads');
-      const firebase = require('firebase-admin');
+      const admin = require('firebase-admin');
+      
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId: '${process.env.FIREBASE_PROJECT_ID}',
+            clientEmail: '${process.env.FIREBASE_CLIENT_EMAIL}',
+            privateKey: \`${process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')}\`
+          })
+        });
+      }
       
       async function runWorkerCode() {
         ${workerData.code}
@@ -92,6 +111,11 @@ db.collection('workers').onSnapshot((snapshot) => {
       activeWorkers.delete(worker.id);
     }
   });
+});
+
+// Catch-all route to serve index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
 });
 
 // Graceful shutdown

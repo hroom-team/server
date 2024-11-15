@@ -19,7 +19,8 @@
     "@monaco-editor/react": "^4.6.0",
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",
