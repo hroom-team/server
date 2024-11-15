@@ -5,8 +5,12 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { Worker } from 'worker_threads';
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
@@ -18,15 +22,29 @@ initializeApp({
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-  }),
-  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
+  })
 });
 
 const db = getFirestore();
 const activeWorkers = new Map();
 
 // Serve static files from the dist directory
-app.use(express.static(path.join(process.cwd(), 'dist')));
+app.use('/workers', express.static(path.join(__dirname, '../dist')));
+
+// API routes can go here if needed
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Handle /workers route for the React app
+app.get('/workers/*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+// Root redirect to /workers
+app.get('/', (req, res) => {
+  res.redirect('/workers');
+});
 
 async function startWorker(workerId) {
   try {
@@ -111,11 +129,6 @@ db.collection('workers').onSnapshot((snapshot) => {
       activeWorkers.delete(worker.id);
     }
   });
-});
-
-// Catch-all route to serve index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
 });
 
 // Graceful shutdown
