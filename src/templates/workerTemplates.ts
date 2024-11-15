@@ -10,14 +10,18 @@ async function monitorSurveys() {
   const surveysRef = collection(db, 'survey');
   const now = Timestamp.now();
   
-  // Получаем опросы со статусом "planned"
-  const q = query(
-    surveysRef, 
-    where('status', '==', 'planned')
-  );
-  
   try {
+    // Получаем опросы со статусом "planned"
+    const q = query(
+      surveysRef, 
+      where('status', '==', 'planned')
+    );
+    
     const querySnapshot = await getDocs(q);
+    const totalSurveys = querySnapshot.size;
+    let modifiedCount = 0;
+    
+    console.log(\`[\${new Date().toLocaleString()}] Найдено опросов со статусом "planned": \${totalSurveys}\`);
     
     for (const docSnapshot of querySnapshot.docs) {
       const survey = docSnapshot.data();
@@ -25,22 +29,28 @@ async function monitorSurveys() {
       
       // Проверяем, наступила ли дата начала
       if (startDate && startDate.toMillis() <= now.toMillis()) {
-        console.log('Активация опроса:', docSnapshot.id);
+        console.log(\`Активация опроса: \${docSnapshot.id}\`);
         
         // Обновляем статус на "active"
         await updateDoc(doc(db, 'survey', docSnapshot.id), {
           status: 'active',
           updated_at: now
         });
+        
+        modifiedCount++;
       }
     }
+    
+    console.log(\`[\${new Date().toLocaleString()}] Изменено статусов: \${modifiedCount}\`);
+    
   } catch (error) {
     console.error('Ошибка при мониторинге опросов:', error);
   }
 }
 
-// Запускаем мониторинг каждую минуту
-setInterval(monitorSurveys, process.env.INTERVAL || 60000);
+// Запускаем мониторинг с интервалом
+const interval = Number(process.env.INTERVAL) || 60000;
+setInterval(monitorSurveys, interval);
 
 // Первый запуск сразу при старте
 monitorSurveys();`
